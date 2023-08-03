@@ -1,0 +1,4 @@
+opener.scorm.set("cmi.completion_status","completed");opener.scorm.set("cmi.success_status","passed")
+
+Used this code for DLC-2. It worked for all 4 modules and I was able to complete it in about 30 min.
+F12->Consoles->Paste (Control+V)->Enter (Should show "true")->Exit out of window->Refresh module page->ALMS will automatically close the page and reload "Successful" in ALMS
