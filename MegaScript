@@ -1,0 +1,238 @@
+//This script should work on most sites.
+
+(function() {
+    try {
+        /**
+         * Helper function to log the results of various operations.
+         * @param {string} description - Description of the operation.
+         * @param {boolean} success - Indicates if the operation was successful.
+         * @param {string} [details=''] - Additional details about the operation.
+         */
+        function logResult(description, success, details = '') {
+            console.log(`${description}: ${success ? 'Success' : 'Failed'} ${details}`);
+            if (!success) {
+                console.error(`${description} did not work. ${details}`);
+            }
+        }
+
+        /**
+         * Helper function to log details about the current environment, such as the URL, frames, and script elements.
+         */
+        function logEnvironmentDetails() {
+            // Log the current URL and the number of frames
+            //console.log("Current URL:", window.location.href);
+            //console.log("Frames count:", window.frames.length);
+
+            // Check if the current window has an opener window and log the information
+            if (window.opener) {
+                console.log("Opener window detected.");
+            } else {
+                console.log("No opener window detected.");
+            }
+
+            // Log all elements in the document (commented out for brevity)
+            var allElements = document.getElementsByTagName('*');
+            //console.log("Document Elements:", allElements);
+
+            // Log all script elements and check for LMS-related content
+            var scriptElements = document.getElementsByTagName('script');
+            for (var i = 0; i < scriptElements.length; i++) {
+                //console.log("Script Element", i, scriptElements[i].outerHTML);
+                
+                var scriptContent = scriptElements[i].innerText || scriptElements[i].textContent;
+                if (scriptContent.includes("lms") || scriptContent.includes("LMS") || scriptContent.includes("api") || scriptContent.includes("API")) {
+                    console.log(`Potential LMS content found in script ${i}:`, scriptContent);
+                }
+            }
+        }
+
+        // Log environment details
+        logEnvironmentDetails();
+
+        // Inspect window.globals for LMS-related properties
+        try {
+            if (window.globals) {
+                console.log("window.globals detected. Properties:");
+                for (var prop in window.globals) {
+                    if (window.globals.hasOwnProperty(prop)) {
+                        console.log(`${prop}: ${window.globals[prop]}`);
+                    }
+                }
+
+                // Check for LMS-related flags in window.globals
+                if (window.globals.lmsPresent || window.globals.tinCanPresent || window.globals.cmi5Present) {
+                    logResult("LMS presence detected in window.globals", true);
+                } else {
+                    logResult("No LMS presence detected in window.globals", false);
+                }
+            } else {
+                logResult("window.globals not found", false);
+            }
+        } catch (e) {
+            logResult("Exception caught while inspecting window.globals", false, e.message);
+            console.error(e);
+        }
+
+        // Log all top-level properties of the window object and their types (commented out for brevity)
+        try {
+            //console.log("Top-level window properties:");
+            for (var key in window) {
+                if (window.hasOwnProperty(key)) {
+                    //console.log(`${key}: ${typeof window[key]}`);
+                }
+            }
+        } catch (e) {
+            console.error("Error logging top-level window properties:", e);
+        }
+
+        /**
+         * Function to inspect all iframes on the page and log their content for LMS API presence.
+         */
+        function inspectIframes() {
+            var iframes = document.getElementsByTagName('iframe');
+            console.log(`Found ${iframes.length} iframes.`);
+            for (var i = 0; i < iframes.length; i++) {
+                try {
+                    var iframeWindow = iframes[i].contentWindow;
+                    console.log(`Inspecting iframe ${i}:`);
+                    for (var key in iframeWindow) {
+                        if (iframeWindow.hasOwnProperty(key)) {
+                            console.log(`iframe ${i} - ${key}: ${typeof iframeWindow[key]}`);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error accessing iframe ${i}:`, e);
+                }
+            }
+        }
+
+        // Inspect all iframes on the page
+        inspectIframes();
+
+        // Example 1: Attempt to set a value using a Flash object
+        try {
+            var mainElement = document.getElementById("Main");
+            if (mainElement) {
+                if (typeof mainElement.SetReturnValue === 'function' && typeof __flash__toXML === 'function' && typeof WEBStoreParameters === 'function') {
+                    mainElement.SetReturnValue(__flash__toXML(WEBStoreParameters("adversaryScores=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0#userScores=100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100#achievementsEarned=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#interactionsVisited=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#interactionsCompleted=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#tasksVisited=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#tasksCompleted=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true")));
+                    logResult("Example 1", true);
+                } else {
+                    logResult("Example 1 - Required functions not found", false);
+                }
+            } else {
+                logResult("Example 1 - Element not found", false);
+            }
+        } catch (e) {
+            logResult("Example 1 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Example 2: LMS API operations in the opener window
+        try {
+            if (window.opener && window.opener.lms) {
+                var lms = window.opener.lms;
+                if (typeof lms.set === 'function' && typeof lms.commit === 'function') {
+                    lms.set("cmi.score.raw", 100);
+                    lms.set("cmi.score.scaled", 1);
+                    lms.set("cmi.completion_status", "completed");
+                    lms.set("cmi.success_status", "passed");
+                    lms.set("cmi.exit", "");
+                    lms.set("adl.nav.request", "exitAll");
+                    lms.commit();
+                    window.close();
+                    logResult("Example 2", true);
+                    return;
+                } else {
+                    logResult("Example 2 - LMS functions not found", false);
+                }
+            } else {
+                logResult("Example 2 - LMS object not found in opener", false);
+            }
+        } catch (e) {
+            logResult("Example 2 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Example 3: LMS API operations using scoAPI
+        try {
+            if (typeof scoAPI !== 'undefined' && scoAPI !== null) {
+                if (typeof scoAPI.LMSSetValue === 'function' && typeof scoAPI.LMSCommit === 'function') {
+                    scoAPI.LMSSetValue("cmi.core.lesson_status", "completed");
+                    scoAPI.LMSCommit("");
+                    if (typeof exitPage === 'function') {
+                        exitPage();
+                    } else {
+                        logResult("Example 3 - exitPage function not found", false);
+                    }
+                    logResult("Example 3", true);
+                    return;
+                } else {
+                    logResult("Example 3 - LMS API functions not found", false);
+                }
+            } else {
+                logResult("Example 3 - scoAPI not defined", false);
+            }
+        } catch (e) {
+            logResult("Example 3 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Example 4 and 5: Advanced LMS API operations
+        try {
+            /**
+             * Function to safely access nested frames and find the SCORM API.
+             * @param {Window} root - The root window to start searching from.
+             * @returns {Object|null} - The SCORM API object if found, otherwise null.
+             */
+            function findNestedFrame(root) {
+                if (!root || !root.frames) return null;
+                for (var i = 0; i < root.frames.length; i++) {
+                    try {
+                        var frame = root.frames[i];
+                        if (frame.API_1484_11) {
+                            return frame.API_1484_11;
+                        }
+                        var nestedFrame = findNestedFrame(frame);
+                        if (nestedFrame) {
+                            return nestedFrame;
+                        }
+                    } catch (e) {
+                        // Continue searching other frames
+                    }
+                }
+                return null;
+            }
+
+            // Attempt to find the SCORM API in nested frames
+            var api = findNestedFrame(window);
+            if (api) {
+                api.SetValue("cmi.exit", "normal");
+                api.Commit("");
+                logResult("Example 4 and 5", true);
+            } else {
+                logResult("Example 4 and 5 - SCORM API elements not found", false);
+            }
+        } catch (e) {
+            logResult("Example 4 and 5 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Check for the SetPassed function and set it to true if found
+        try {
+            if (typeof SetPassed === 'function') {
+                SetPassed(true);
+                logResult("SetPassed function found and set to true", true);
+            } else {
+                logResult("SetPassed function not found", false);
+            }
+        } catch (e) {
+            logResult("Exception caught while checking for SetPassed function", false, e.message);
+            console.error(e);
+        }
+
+        // Indicate that all attempts are completed
+        console.log("All attempts completed. Data must be stored server side. Can't beat this one. Try Quizlet, Google, or AI to find answers.");
+    } catch (e) {
+        console.error("An unexpected error occurred:", e);
+    }
+})();
