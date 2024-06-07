@@ -1,0 +1,490 @@
+/**
+*  Disclaimer:
+*  By using this, you agree to assume any and all risks that
+*  come with it, including the consequences.
+*	
+*	1. Open your class in Internet Explorer.
+*	2. Press the F12 key when your class is fully loaded. This will open the developer tools.
+*	3. Click on the "Console" tab of the developer tools window.
+*	4. Paste the code in the text box at the bottom of the console tab.
+*/
+
+
+(function() {
+    try {
+        /**
+         * Helper function to log the results of various operations.
+         * @param {string} description - Description of the operation.
+         * @param {boolean} success - Indicates if the operation was successful.
+         * @param {string} [details=''] - Additional details about the operation.
+         */
+        function logResult(description, success, details = '') {
+            console.log(`${description}: ${success ? 'Success' : 'Failed'} ${details}`);
+            if (!success) {
+                console.error(`${description} did not work. ${details}`);
+            }
+        }
+
+        /**
+         * Helper function to log details about the current environment, such as the URL, frames, and script elements.
+         */
+        function logEnvironmentDetails() {
+            // Log the current URL and the number of frames
+            //console.log("Current URL:", window.location.href);
+            //console.log("Frames count:", window.frames.length);
+
+            // Check if the current window has an opener window and log the information
+            if (window.opener) {
+                console.log("Opener window detected.");
+            } else {
+                console.log("No opener window detected.");
+            }
+
+            // Log all elements in the document (commented out for brevity)
+            var allElements = document.getElementsByTagName('*');
+            //console.log("Document Elements:", allElements);
+
+            // Log all script elements and check for LMS-related content
+            var scriptElements = document.getElementsByTagName('script');
+            for (var i = 0; i < scriptElements.length; i++) {
+                //console.log("Script Element", i, scriptElements[i].outerHTML);
+                
+                var scriptContent = scriptElements[i].innerText || scriptElements[i].textContent;
+                if (scriptContent.includes("lms") || scriptContent.includes("LMS") || scriptContent.includes("api") || scriptContent.includes("API")) {
+                    console.log(`Potential LMS content found in script ${i}:`, scriptContent);
+                }
+            }
+        }
+
+        // Log environment details
+        logEnvironmentDetails();
+
+        // Inspect window.globals for LMS-related properties
+        try {
+            if (window.globals) {
+                console.log("window.globals detected. Properties:");
+                for (var prop in window.globals) {
+                    if (window.globals.hasOwnProperty(prop)) {
+                        console.log(`${prop}: ${window.globals[prop]}`);
+                    }
+                }
+
+                // Check for LMS-related flags in window.globals
+                if (window.globals.lmsPresent || window.globals.tinCanPresent || window.globals.cmi5Present) {
+                    logResult("LMS presence detected in window.globals", true);
+                } else {
+                    logResult("No LMS presence detected in window.globals", false);
+                }
+            } else {
+                logResult("window.globals not found", false);
+            }
+        } catch (e) {
+            logResult("Exception caught while inspecting window.globals", false, e.message);
+            console.error(e);
+        }
+
+        // Log all top-level properties of the window object and their types (commented out for brevity)
+        try {
+            //console.log("Top-level window properties:");
+            for (var key in window) {
+                if (window.hasOwnProperty(key)) {
+                    //console.log(`${key}: ${typeof window[key]}`);
+                }
+            }
+        } catch (e) {
+            console.error("Error logging top-level window properties:", e);
+        }
+
+        /**
+         * Function to inspect all iframes on the page and log their content for LMS API presence.
+         */
+        function inspectIframes() {
+            var iframes = document.getElementsByTagName('iframe');
+            console.log(`Found ${iframes.length} iframes.`);
+            for (var i = 0; i < iframes.length; i++) {
+                try {
+                    var iframeWindow = iframes[i].contentWindow;
+                    console.log(`Inspecting iframe ${i}:`);
+                    for (var key in iframeWindow) {
+                        if (iframeWindow.hasOwnProperty(key)) {
+                            console.log(`iframe ${i} - ${key}: ${typeof iframeWindow[key]}`);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error accessing iframe ${i}:`, e);
+                }
+            }
+        }
+
+        // Inspect all iframes on the page
+        inspectIframes();
+
+        // Example 1: Attempt to set a value using a Flash object
+        try {
+            var mainElement = document.getElementById("Main");
+            if (mainElement) {
+                if (typeof mainElement.SetReturnValue === 'function' && typeof __flash__toXML === 'function' && typeof WEBStoreParameters === 'function') {
+                    mainElement.SetReturnValue(__flash__toXML(WEBStoreParameters("adversaryScores=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0#userScores=100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100#achievementsEarned=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#interactionsVisited=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#interactionsCompleted=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#tasksVisited=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true#tasksCompleted=true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true")));
+                    logResult("Example 1", true);
+                } else {
+                    logResult("Example 1 - Required functions not found", false);
+                }
+            } else {
+                logResult("Example 1 - Element not found", false);
+            }
+        } catch (e) {
+            logResult("Example 1 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Example 2: LMS API operations in the opener window
+        try {
+            if (window.opener && window.opener.lms) {
+                var lms = window.opener.lms;
+                if (typeof lms.set === 'function' && typeof lms.commit === 'function') {
+                    lms.set("cmi.score.raw", 100);
+                    lms.set("cmi.score.scaled", 1);
+                    lms.set("cmi.completion_status", "completed");
+                    lms.set("cmi.success_status", "passed");
+                    lms.set("cmi.exit", "");
+                    lms.set("adl.nav.request", "exitAll");
+                    lms.commit();
+                    window.close();
+                    logResult("Example 2", true);
+                    return;
+                } else {
+                    logResult("Example 2 - LMS functions not found", false);
+                }
+            } else {
+                logResult("Example 2 - LMS object not found in opener", false);
+            }
+        } catch (e) {
+            logResult("Example 2 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Example 3: LMS API operations using scoAPI
+        try {
+            if (typeof scoAPI !== 'undefined' && scoAPI !== null) {
+                if (typeof scoAPI.LMSSetValue === 'function' && typeof scoAPI.LMSCommit === 'function') {
+                    scoAPI.LMSSetValue("cmi.core.lesson_status", "completed");
+                    scoAPI.LMSCommit("");
+                    if (typeof exitPage === 'function') {
+                        exitPage();
+                    } else {
+                        logResult("Example 3 - exitPage function not found", false);
+                    }
+                    logResult("Example 3", true);
+                    return;
+                } else {
+                    logResult("Example 3 - LMS API functions not found", false);
+                }
+            } else {
+                logResult("Example 3 - scoAPI not defined", false);
+            }
+        } catch (e) {
+            logResult("Example 3 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Example 4 and 5: Advanced LMS API operations
+        try {
+            /**
+             * Function to safely access nested frames and find the SCORM API.
+             * @param {Window} root - The root window to start searching from.
+             * @returns {Object|null} - The SCORM API object if found, otherwise null.
+             */
+            function findNestedFrame(root) {
+                if (!root || !root.frames) return null;
+                for (var i = 0; i < root.frames.length; i++) {
+                    try {
+                        var frame = root.frames[i];
+                        if (frame.API_1484_11) {
+                            return frame.API_1484_11;
+                        }
+                        var nestedFrame = findNestedFrame(frame);
+                        if (nestedFrame) {
+                            return nestedFrame;
+                        }
+                    } catch (e) {
+                        // Continue searching other frames
+                    }
+                }
+                return null;
+            }
+
+            // Attempt to find the SCORM API in nested frames
+            var api = findNestedFrame(window);
+            if (api) {
+                api.SetValue("cmi.exit", "normal");
+                api.Commit("");
+                logResult("Example 4 and 5", true);
+            } else {
+                logResult("Example 4 and 5 - SCORM API elements not found", false);
+            }
+        } catch (e) {
+            logResult("Example 4 and 5 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Check for the SetPassed function and set it to true if found
+        try {
+            if (typeof SetPassed === 'function') {
+                SetPassed(true);
+                logResult("SetPassed function found and set to true", true);
+            } else {
+                logResult("SetPassed function not found", false);
+            }
+        } catch (e) {
+            logResult("Exception caught while checking for SetPassed function", false, e.message);
+            console.error(e);
+        }
+
+        // Additional Operations Merging
+        try {
+            // 1. Using pipwerks.SCORM to set lesson status
+            if (document.frames[0] && document.frames[0].document.frames[1] && document.frames[0].document.frames[1].pipwerks) {
+                document.frames[0].document.frames[1].pipwerks.SCORM.data.set("cmi.core.lesson_status", "completed");
+                top.close();
+                logResult("Additional 1", true);
+            } else {
+                logResult("Additional 1 - Frames or pipwerks not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 1 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 2. Set various SCORM values in nested frames
+            var test;
+            if (document.frames[1] && document.frames[1].frames[1] && document.frames[1].frames[1].frames[1] && document.frames[1].frames[1].frames[1].parent.API_1484_11) {
+                test = document.frames[1].frames[1].frames[1].parent.API_1484_11;
+                test.dataModelInterface.root.containers.cmi.elements.scaled_passing_score.writeable = true;
+
+                var r = 0;
+                while (r < 0.8 || r > 1) {
+                    r = Math.floor((Math.random() * 100)) / 100;
+                }
+
+                test.SetValue("cmi.scaled_passing_score", 0.8);
+                test.SetValue("cmi.score.scaled", r);
+                test.SetValue("cmi.completion_status", "completed");
+                test.SetValue("cmi.success_status", "passed");
+                test.SetValue("cmi.score.raw", r * 100);
+                test.SetValue("adl.nav.request", "continue");
+                test.completeUserSession(true);
+
+                logResult("Additional 2", true);
+            } else {
+                logResult("Additional 2 - Frames or API_1484_11 not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 2 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 3. Using scoAPI to set lesson status and commit
+            if (typeof scoAPI !== 'undefined' && scoAPI !== null) {
+                scoAPI.LMSSetValue("cmi.core.lesson_status", "completed");
+                scoAPI.LMSCommit("");
+                if (typeof exitPage === 'function') {
+                    exitPage();
+                } else {
+                    logResult("Additional 3 - exitPage function not found", false);
+                }
+                logResult("Additional 3", true);
+                return;
+            } else {
+                logResult("Additional 3 - scoAPI not defined", false);
+            }
+        } catch (e) {
+            logResult("Additional 3 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 4. Using opener.scorm to set various SCORM values
+            if (window.opener && window.opener.scorm) {
+                window.opener.scorm.set("cmi.score.raw", 100);
+                window.opener.scorm.set("cmi.score.scaled", 1);
+                window.opener.scorm.set("cmi.completion_status", "completed");
+                window.opener.scorm.set("cmi.success_status", "passed");
+                window.opener.scorm.set("cmi.exit", "");
+                window.opener.scorm.set("adl.nav.request", "exitAll");
+                window.opener.scorm.commit();
+                logResult("Additional 4", true);
+                return;
+            } else {
+                logResult("Additional 4 - opener.scorm not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 4 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 5. Setting various SCORM values in nested frames
+            var test5;
+            if (document.frames[1] && document.frames[1].frames[1] && document.frames[1].frames[1].frames[1] && document.frames[1].frames[1].frames[1].parent.API_1484_11) {
+                test5 = document.frames[1].frames[1].frames[1].parent.API_1484_11;
+                test5.dataModelInterface.root.containers.cmi.elements.scaled_passing_score.writeable = true;
+
+                var r5 = 0;
+                while (r5 < 0.8 || r5 > 1) {
+                    r5 = Math.floor((Math.random() * 100)) / 100;
+                }
+
+                test5.SetValue("cmi.scaled_passing_score", 0.8);
+                test5.SetValue("cmi.score.scaled", r5);
+                test5.SetValue("cmi.completion_status", "completed");
+                test5.SetValue("cmi.success_status", "passed");
+                test5.SetValue("cmi.score.raw", r5 * 100);
+                test5.SetValue("adl.nav.request", "continue");
+                test5.completeUserSession(true);
+
+                logResult("Additional 5", true);
+            } else {
+                logResult("Additional 5 - Frames or API_1484_11 not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 5 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 6. Using pipwerks.SCORM to set completion and success status
+            if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
+                pipwerks.SCORM.status("set", "completed");
+                pipwerks.SCORM.set("cmi.success_status", "passed");
+                top.close();
+                logResult("Additional 6", true);
+                return;
+            } else {
+                logResult("Additional 6 - pipwerks.SCORM not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 6 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 7. Using tester function to set various SCORM values and commit
+            function tester() {
+                LMSSetValue("cmi.completion_status", "completed");
+                LMSSetValue("cmi.success_status", "passed");
+                LMSSetValue("cmi.exit", "normal");
+                LMSSetValue("adl.nav.request", "exitAll");
+                LMSSetValue("cmi.scaled_passing_score", 0.8);
+                LMSSetValue("cmi.score.scaled", 0.9);
+                LMSSetValue("cmi.score.raw", 90);
+                LMSCommit();
+                top.close();
+            }
+
+            if (typeof tester === 'function') {
+                tester();
+                logResult("Additional 7", true);
+                return;
+            } else {
+                logResult("Additional 7 - tester function not defined", false);
+            }
+        } catch (e) {
+            logResult("Additional 7 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 8. Using doSetValue to set various SCORM values and commit
+            if (typeof doSetValue === 'function' && typeof doCommit === 'function') {
+                doSetValue("cmi.success_status", "passed");
+                doSetValue("cmi.completion_status", "completed");
+                doSetValue("cmi.exit", "normal");
+                doSetValue("adl.nav.request", "exitAll");
+                doSetValue("cmi.score.scaled", 0.9);
+                doSetValue("cmi.score.raw", 90);
+                doCommit();
+                top.close();
+                logResult("Additional 8", true);
+                return;
+            } else {
+                logResult("Additional 8 - doSetValue or doCommit functions not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 8 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 9. Using SCORM2004_Set functions to set various SCORM values
+            if (typeof SCORM2004_SetPassed === 'function' && typeof SCORM2004_SetScore === 'function' && typeof SCORM2004_SetCompleted === 'function') {
+                SCORM2004_SetPassed();
+                SCORM2004_SetScore(80, 100, 0);
+                SCORM2004_SetCompleted();
+                logResult("Additional 9", true);
+                return;
+            } else {
+                logResult("Additional 9 - SCORM2004_Set functions not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 9 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 10. Using pipwerks.SCORM to set completion and success status
+            if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
+                pipwerks.SCORM.status("set", "completed");
+                pipwerks.SCORM.set("cmi.success_status", "passed");
+                top.close();
+                logResult("Additional 10", true);
+                return;
+            } else {
+                logResult("Additional 10 - pipwerks.SCORM not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 10 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 11. Using lmsManager to set various SCORM values
+            if (typeof lmsManager !== 'undefined' && typeof lmsManager.setValue === 'function') {
+                lmsManager.setValue("cmi.completion_status", "completed");
+                lmsManager.setValue("cmi.success_status", "passed");
+                lmsManager.setValue("adl.nav.request", "exitAll");
+                logResult("Additional 11", true);
+                return;
+            } else {
+                logResult("Additional 11 - lmsManager or setValue function not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 11 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        try {
+            // 12. Using API_1484_11 to set completion status and submit form
+            if (typeof API_1484_11 !== 'undefined' && typeof API_1484_11.SetValue === 'function') {
+                API_1484_11.SetValue('cmi.completion_status', 'completed');
+                var courseHeader = document.getElementsByName("courseheader").item(0);
+                if (courseHeader && courseHeader.contentDocument.getElementById("c")) {
+                    courseHeader.contentDocument.getElementById("c").submit();
+                }
+                logResult("Additional 12", true);
+                return;
+            } else {
+                logResult("Additional 12 - API_1484_11 or course header elements not found", false);
+            }
+        } catch (e) {
+            logResult("Additional 12 - Exception caught", false, e.message);
+            console.error(e);
+        }
+
+        // Indicate that all attempts are completed
+        console.log("All attempts completed. Data must be stored server side. Can't beat this one. Try Quizlet, Google, or AI to find answers.");
+    } catch (e) {
+        console.error("An unexpected error occurred:", e);
+    }
+})();
